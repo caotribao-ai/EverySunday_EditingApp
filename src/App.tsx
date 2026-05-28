@@ -1404,6 +1404,10 @@ export default function App() {
         throw new Error(data.error || "Không thể kết nối với AI.");
       }
 
+      const serverPlan = data?.plan;
+      if (serverPlan && Array.isArray(serverPlan.actions) && serverPlan.actions.length > 0) {
+        setPendingChatPlan(serverPlan as ChatEditPlan);
+      }
       const aiText = data.text || "Xin lỗi, tôi không thể trả lời lúc này.";
       setChatMessages(prev => [...prev, { role: 'assistant', content: aiText }]);
     } catch (error) {

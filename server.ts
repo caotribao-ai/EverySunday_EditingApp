@@ -403,17 +403,72 @@ async function startServer() {
 
   const heavyApiLimiter = createIpRateLimiter(60, 60_000);
 
-  // Server-side Gemini proxy. Keeps GEMINI_API_KEY out of the browser bundle.
+  type ChatActionType =
+    | "MAGIC_CUT_ON"
+    | "MAGIC_CUT_OFF"
+    | "AI_CAPTION_ON"
+    | "AI_CAPTION_OFF"
+    | "SNAP_ON"
+    | "SNAP_OFF"
+    | "BROLL_AUTO"
+    | "ZOOM_AUTO"
+    | "STYLE_SET"
+    | "EXPORT_VIDEO";
+
+  const CHAT_ACTION_TYPES: ChatActionType[] = [
+    "MAGIC_CUT_ON",
+    "MAGIC_CUT_OFF",
+    "AI_CAPTION_ON",
+    "AI_CAPTION_OFF",
+    "SNAP_ON",
+    "SNAP_OFF",
+    "BROLL_AUTO",
+    "ZOOM_AUTO",
+    "STYLE_SET",
+    "EXPORT_VIDEO",
+  ];
+
+  const CHAT_STYLE_IDS = new Set(["iman2", "alex", "mrbeast", "hormozi", "bob", "aliabdaal"]);
+
+  const buildActionLabel = (type: ChatActionType, payload?: string) => {
+    switch (type) {
+      case "MAGIC_CUT_ON": return "Bật Remove Silence (Magic Cut)";
+      case "MAGIC_CUT_OFF": return "Tắt Remove Silence (Magic Cut)";
+      case "AI_CAPTION_ON": return "Bật AI Caption";
+      case "AI_CAPTION_OFF": return "Tắt AI Caption";
+      case "SNAP_ON": return "Bật EverySunday Style";
+      case "SNAP_OFF": return "Tắt EverySunday Style";
+      case "BROLL_AUTO": return "Phân tích và thêm Auto B-roll";
+      case "ZOOM_AUTO": return "Tạo Auto Zoom";
+      case "STYLE_SET": return payload ? `Đổi style caption: ${payload}` : "Đổi style caption";
+      case "EXPORT_VIDEO": return "Xuất video";
+      default: return type;
+    }
+  };
+
+  const sanitizeChatActions = (rawActions: any[]): Array<{ type: ChatActionType; label: string; payload?: string }> => {
+    const out: Array<{ type: ChatActionType; label: string; payload?: string }> = [];
+    for (const raw of rawActions || []) {
+      const type = String(raw?.type || "").toUpperCase() as ChatActionType;
+      if (!CHAT_ACTION_TYPES.includes(type)) continue;
+      const payload = typeof raw?.payload === "string" ? raw.payload.trim() : undefined;
+      if (type === "STYLE_SET" && payload && !CHAT_STYLE_IDS.has(payload)) continue;
+      if (out.some((a) => a.type === type && (a.payload || "") === (payload || ""))) continue;
+      out.push({ type, payload, label: buildActionLabel(type, payload) });
+      if (out.length >= 8) break;
+    }
+    return out;
+  };
+
+  const summarizePlan = (actions: Array<{ label: string }>) =>
+    `Mình hiểu yêu cầu. Mình sẽ thực hiện:\n${actions.map((a, i) => `${i + 1}. ${a.label}`).join("\n")}\n\nNhấn "Áp dụng" để chạy tự động.`;
+
+  // Cost-optimized chat intent parser with structured actions.
   app.post("/api/ai/chat", heavyApiLimiter, requireFirebaseUserMiddleware, async (req: AuthedRequest, res) => {
     try {
       const userId = req.firebaseUser!.uid;
       const plan = await getUserPlan(userId);
       await assertDailyUsage(userId, plan, "aiChatRequests", "dailyAiChatRequests");
-
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        return res.status(401).json({ error: "Chưa cấu hình GEMINI_API_KEY." });
-      }
 
       const { messages = [], message } = req.body;
       if (typeof message !== "string" || !message.trim()) {
@@ -426,30 +481,84 @@ async function startServer() {
         + Math.ceil((String(message).length + historyChars) / 1000) * FEATURE_CREDIT_COST.aiChatPer1kChars;
       await reserveCredits(userId, plan, "aiChat", estimatedCredits);
 
-      const { GoogleGenAI } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey });
       const safeMessages = Array.isArray(messages) ? messages.slice(-20) : [];
+      const chatProvider = String(process.env.CHAT_PROVIDER || "groq").toLowerCase();
+      const isGroq = chatProvider === "groq";
+      const isOpenAI = chatProvider === "openai";
+      const groqKey = process.env.GROQ_API_KEY;
+      const openaiKey = process.env.OPENAI_API_KEY;
+      const geminiKey = process.env.GEMINI_API_KEY;
+      const canUseOpenAICompatible = (isGroq && !!groqKey) || (isOpenAI && !!openaiKey);
+      const systemPrompt =
+        "Bạn là AI Chat Edit planner cho ứng dụng chỉnh sửa video. " +
+        "Nhiệm vụ: chuyển yêu cầu người dùng thành danh sách hành động hợp lệ. " +
+        "Chỉ dùng các type: MAGIC_CUT_ON, MAGIC_CUT_OFF, AI_CAPTION_ON, AI_CAPTION_OFF, SNAP_ON, SNAP_OFF, BROLL_AUTO, ZOOM_AUTO, STYLE_SET, EXPORT_VIDEO. " +
+        "STYLE_SET chỉ nhận payload một trong: iman2, alex, mrbeast, hormozi, bob, aliabdaal. " +
+        "Trả về JSON object duy nhất theo schema: {assistantText:string, actions:Array<{type:string,payload?:string}>}. " +
+        "Nếu không chắc, để actions là mảng rỗng và assistantText hỏi lại ngắn gọn bằng tiếng Việt.";
 
-      const response = await ai.models.generateContent({
-        model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
-        contents: [
-          ...safeMessages
-            .filter((m: any) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-            .map((m: any) => ({
-              role: m.role === "user" ? "user" : "model",
-              parts: [{ text: m.content.slice(0, 4000) }]
-            })),
-          { role: "user", parts: [{ text: message.slice(0, 4000) }] }
-        ],
-        config: {
-          systemInstruction: "Bạn là AI Personal Assistant của ứng dụng EverySunday. EverySunday là công cụ chỉnh sửa video AI chuyên tạo phụ đề viral, tự động chèn B-roll, zoom và cắt im lặng cho TikTok, Reels, Shorts. Trả lời bằng tiếng Việt, ngắn gọn, hữu ích, và hướng dẫn thao tác trong app khi phù hợp."
-        }
-      });
+      let assistantText = "Mình chưa hiểu rõ yêu cầu. Bạn nói cụ thể thao tác muốn làm nhé.";
+      let parsedActions: Array<{ type: ChatActionType; label: string; payload?: string }> = [];
+
+      if (canUseOpenAICompatible) {
+        const { default: OpenAI } = await import("openai");
+        const client = new OpenAI({
+          apiKey: isGroq ? groqKey : openaiKey,
+          ...(isGroq ? { baseURL: "https://api.groq.com/openai/v1" } : {}),
+        });
+        const llmModel = isGroq
+          ? process.env.CHAT_MODEL_GROQ || "llama-3.1-8b-instant"
+          : process.env.CHAT_MODEL_OPENAI || "gpt-4o-mini";
+        const completion = await client.chat.completions.create({
+          model: llmModel,
+          temperature: 0.1,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...safeMessages
+              .filter((m: any) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+              .map((m: any) => ({ role: m.role, content: String(m.content).slice(0, 1500) })),
+            { role: "user", content: message.slice(0, 2000) },
+          ],
+        });
+        const content = completion.choices?.[0]?.message?.content || "{}";
+        const parsed = JSON.parse(content);
+        parsedActions = sanitizeChatActions(Array.isArray(parsed?.actions) ? parsed.actions : []);
+        assistantText = String(parsed?.assistantText || "").trim() || assistantText;
+      } else if (geminiKey) {
+        const { GoogleGenAI } = await import("@google/genai");
+        const ai = new GoogleGenAI({ apiKey: geminiKey });
+        const response = await ai.models.generateContent({
+          model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
+          contents: [
+            ...safeMessages
+              .filter((m: any) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+              .map((m: any) => ({
+                role: m.role === "user" ? "user" : "model",
+                parts: [{ text: String(m.content).slice(0, 1500) }],
+              })),
+            { role: "user", parts: [{ text: message.slice(0, 2000) }] },
+          ],
+          config: { systemInstruction: systemPrompt },
+        });
+        const content = String(response.text || "{}");
+        const parsed = JSON.parse(content);
+        parsedActions = sanitizeChatActions(Array.isArray(parsed?.actions) ? parsed.actions : []);
+        assistantText = String(parsed?.assistantText || "").trim() || assistantText;
+      } else {
+        assistantText = "Chưa cấu hình AI provider cho Chat Edit. Hãy set CHAT_PROVIDER và API key tương ứng.";
+      }
 
       await incrementDailyUsage(userId, "aiChatRequests");
-      res.json({ text: response.text || "Xin lỗi, tôi không thể trả lời lúc này." });
+      if (parsedActions.length > 0) {
+        return res.json({
+          text: summarizePlan(parsedActions),
+          plan: { sourceMessage: message, actions: parsedActions },
+        });
+      }
+      res.json({ text: assistantText || "Xin lỗi, tôi không thể trả lời lúc này." });
     } catch (error: any) {
-      console.error("Gemini chat failed:", error);
+      console.error("AI chat failed:", error);
       if (isCreditError(error)) {
         return res.status(402).json({ error: getErrorMessage(error) });
       }
@@ -1742,6 +1851,7 @@ ${sortedCaps.map((c: any) => `[${c.start.toFixed(2)}-${c.end.toFixed(2)}] ${c.te
     audioPath: string,
     jobId: string,
     language: string,
+    isGroqProvider: boolean,
     transcriptionModel: string,
     openai: any,
     updateJob: (status: string, progress: number, error?: string, result?: any) => void
@@ -1780,15 +1890,37 @@ ${sortedCaps.map((c: any) => `[${c.start.toFixed(2)}-${c.end.toFixed(2)}] ${c.te
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
         updateJob("transcribing", 50 + Math.floor(((i + 1) / chunks.length) * 35));
-        const transcription = await openai.audio.transcriptions.create({
+        const transcriptionInput: Record<string, any> = {
           file: fs.createReadStream(chunk.path),
           model: transcriptionModel,
           response_format: "verbose_json",
-          timestamp_granularities: ["word"],
           language: language === "Vietnamese" ? "vi" : (language === "English" ? "en" : undefined)
-        });
+        };
+        // Groq's Whisper-compatible API can reject timestamp_granularities.
+        if (!isGroqProvider) {
+          transcriptionInput.timestamp_granularities = ["word"];
+        }
+        const transcription = await openai.audio.transcriptions.create(transcriptionInput);
 
-        const words = (transcription as any).words || [];
+        let words = (transcription as any).words || [];
+        if ((!Array.isArray(words) || words.length === 0) && Array.isArray((transcription as any).segments)) {
+          const segments = (transcription as any).segments as Array<{ start?: number; end?: number; text?: string }>;
+          // Fallback: synthesize word-level items from segments when provider doesn't return `words`.
+          words = segments.flatMap((segment) => {
+            const text = String(segment.text || "").trim();
+            if (!text) return [];
+            const tokens = text.split(/\s+/).filter(Boolean);
+            const start = Number(segment.start || 0);
+            const end = Math.max(start, Number(segment.end || start));
+            const duration = Math.max(0.04, end - start);
+            const slice = duration / Math.max(1, tokens.length);
+            return tokens.map((token, idx) => ({
+              word: token,
+              start: start + idx * slice,
+              end: Math.min(end, start + (idx + 1) * slice),
+            }));
+          });
+        }
         for (const word of words) {
           allWords.push({
             ...word,
@@ -1915,6 +2047,7 @@ ${sortedCaps.map((c: any) => `[${c.start.toFixed(2)}-${c.end.toFixed(2)}] ${c.te
         audioPath,
         jobId,
         language,
+        isGroqProvider,
         transcriptionModel,
         openai,
         updateJob
