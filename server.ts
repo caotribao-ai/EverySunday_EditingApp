@@ -1742,6 +1742,7 @@ ${sortedCaps.map((c: any) => `[${c.start.toFixed(2)}-${c.end.toFixed(2)}] ${c.te
     audioPath: string,
     jobId: string,
     language: string,
+    transcriptionModel: string,
     openai: any,
     updateJob: (status: string, progress: number, error?: string, result?: any) => void
   ) => {
@@ -1781,7 +1782,7 @@ ${sortedCaps.map((c: any) => `[${c.start.toFixed(2)}-${c.end.toFixed(2)}] ${c.te
         updateJob("transcribing", 50 + Math.floor(((i + 1) / chunks.length) * 35));
         const transcription = await openai.audio.transcriptions.create({
           file: fs.createReadStream(chunk.path),
-          model: "whisper-1",
+          model: transcriptionModel,
           response_format: "verbose_json",
           timestamp_granularities: ["word"],
           language: language === "Vietnamese" ? "vi" : (language === "English" ? "en" : undefined)
@@ -1866,7 +1867,14 @@ ${sortedCaps.map((c: any) => `[${c.start.toFixed(2)}-${c.end.toFixed(2)}] ${c.te
   const runTranscribeJob = async (task: { jobId: string; userId: string; payload: any }) => {
     const { jobId, payload, userId } = task;
     const { videoUrl, language = "Vietnamese", fileName, uploadedFilePath } = payload;
-    const openaiKey = process.env.OPENAI_API_KEY;
+    const transcribeProvider = String(process.env.TRANSCRIBE_PROVIDER || "openai").toLowerCase();
+    const isGroqProvider = transcribeProvider === "groq";
+    const apiKey = isGroqProvider
+      ? process.env.GROQ_API_KEY
+      : process.env.OPENAI_API_KEY;
+    const transcriptionModel = isGroqProvider
+      ? process.env.GROQ_TRANSCRIBE_MODEL || "whisper-large-v3-turbo"
+      : process.env.OPENAI_TRANSCRIBE_MODEL || "whisper-1";
 
     const updateJob = (status: string, progress: number, error?: string, result?: any) => {
       persistJob({ id: jobId, userId, kind: "transcribe", status, progress, error, result, queuePosition: undefined });
@@ -1876,7 +1884,11 @@ ${sortedCaps.map((c: any) => `[${c.start.toFixed(2)}-${c.end.toFixed(2)}] ${c.te
     let localFilePath = uploadedFilePath || path.join("uploads", `${jobId}_input.mp4`);
     const audioPath = `${localFilePath}.mp3`;
     try {
-      if (!openaiKey) throw new Error("Chưa cấu hình OPENAI_API_KEY.");
+      if (!apiKey) {
+        throw new Error(
+          isGroqProvider ? "Chưa cấu hình GROQ_API_KEY." : "Chưa cấu hình OPENAI_API_KEY."
+        );
+      }
 
       if (!uploadedFilePath && videoUrl) {
         updateJob("downloading", 5);
@@ -1895,8 +1907,18 @@ ${sortedCaps.map((c: any) => `[${c.start.toFixed(2)}-${c.end.toFixed(2)}] ${c.te
 
       updateJob("transcribing", 50);
       const { default: OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: openaiKey });
-      const words = await transcribeWhisperWithChunks(audioPath, jobId, language, openai, updateJob);
+      const openai = new OpenAI({
+        apiKey,
+        ...(isGroqProvider ? { baseURL: "https://api.groq.com/openai/v1" } : {}),
+      });
+      const words = await transcribeWhisperWithChunks(
+        audioPath,
+        jobId,
+        language,
+        transcriptionModel,
+        openai,
+        updateJob
+      );
       const captures = buildCaptionsFromWords(words);
       updateJob("done", 100, undefined, {
         captions: captures,
@@ -1908,8 +1930,8 @@ ${sortedCaps.map((c: any) => `[${c.start.toFixed(2)}-${c.end.toFixed(2)}] ${c.te
       });
     } catch (e: any) {
       console.error(`[Job ${jobId}] Error:`, e);
-      if (openaiKey) {
-        console.error(`[Job ${jobId}] API Key mask:`, openaiKey.substring(0, 5) + "..." + openaiKey.slice(-4), "Len:", openaiKey.length);
+      if (apiKey) {
+        console.error(`[Job ${jobId}] API Key mask:`, apiKey.substring(0, 5) + "..." + apiKey.slice(-4), "Len:", apiKey.length);
       }
       let msg = e.message || "Lỗi sự cố máy chủ.";
       if (typeof msg === "string" && msg.includes("ApiError:")) {
@@ -1920,9 +1942,13 @@ ${sortedCaps.map((c: any) => `[${c.start.toFixed(2)}-${c.end.toFixed(2)}] ${c.te
         } catch {}
       }
       if (msg.includes("429") || msg.includes("quota") || msg.includes("insufficient_quota")) {
-        msg = "LỖI OPENAI QUOTA: Tài khoản OpenAI của bạn đã hết hạn mức (hết tiền) hoặc chưa thêm thẻ thanh toán (Error 429). Giải pháp:\n1. Vào trang billing của OpenAI (https://platform.openai.com/account/billing) để nạp thêm credits.\n2. Hoặc sử dụng một API Key khác có sẵn số dư dự phòng.";
+        msg = isGroqProvider
+          ? "LỖI GROQ QUOTA/RATE LIMIT: Tài khoản Groq đã hết hạn mức hoặc vượt tốc độ. Giải pháp:\n1. Kiểm tra usage/quota trong Groq Console.\n2. Giảm tần suất transcribe hoặc đổi model nhẹ hơn."
+          : "LỖI OPENAI QUOTA: Tài khoản OpenAI của bạn đã hết hạn mức (hết tiền) hoặc chưa thêm thẻ thanh toán (Error 429). Giải pháp:\n1. Vào trang billing của OpenAI (https://platform.openai.com/account/billing) để nạp thêm credits.\n2. Hoặc sử dụng một API Key khác có sẵn số dư dự phòng.";
       } else if (msg.includes("API_KEY_INVALID") || msg.includes("API key not valid") || (typeof e.message === "string" && e.message.includes("API key not valid"))) {
-        msg = "LỖI API KEY: Khóa API hiện tại bị từ chối. CÁCH KHẮC PHỤC: Vào Settings -> Secrets -> Bấm \"+ Add secret\", đặt Name là OPENAI_API_KEY và dán mã mới của bạn vào ô Value. Bấm Apply changes rồi thử lại.";
+        msg = isGroqProvider
+          ? "LỖI API KEY: Khóa Groq bị từ chối. CÁCH KHẮC PHỤC: Thêm secret `GROQ_API_KEY` với key hợp lệ và deploy lại."
+          : "LỖI API KEY: Khóa API hiện tại bị từ chối. CÁCH KHẮC PHỤC: Vào Settings -> Secrets -> Bấm \"+ Add secret\", đặt Name là OPENAI_API_KEY và dán mã mới của bạn vào ô Value. Bấm Apply changes rồi thử lại.";
       }
       updateJob("error", 0, msg);
       throw new Error(msg);
