@@ -1,0 +1,53 @@
+services:
+  - type: web
+    name: snap-studio-web
+    runtime: node
+    plan: free
+    autoDeploy: true
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PEXELS_API_KEY
+        sync: false
+      - key: SEPAY_API_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: GOOGLE_CLOUD_PROJECT
+        sync: false
+      - key: ADMIN_UIDS
+        sync: false
+
+  - type: worker
+    name: snap-studio-worker
+    runtime: node
+    plan: free
+    autoDeploy: true
+    buildCommand: npm ci && npm run build
+    startCommand: npm run worker
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: RUN_AS_WORKER
+        value: "true"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PEXELS_API_KEY
+        sync: false
+      - key: SEPAY_API_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: GOOGLE_CLOUD_PROJECT
+        sync: false
+      - key: ADMIN_UIDS
+        sync: false

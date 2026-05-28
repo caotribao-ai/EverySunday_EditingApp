@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="EverySunday — AI video editor for viral shorts: captions, B-roll, magic cut, export." />
+    <meta name="theme-color" content="#18181b" />
+    <title>EverySunday — AI Video Editor</title>
+    <script>
+      (function() {
+        if (typeof window !== 'undefined') {
+          try {
+            const originalFetch = window.fetch;
+            Object.defineProperty(window, 'fetch', {
+              configurable: true,
+              enumerable: true,
+              get: function() { return originalFetch; },
+              set: function(v) { 
+                console.warn('Blocked attempt to overwrite window.fetch');
+              }
+            });
+          } catch (e) {
+            console.error('Failed to apply fetch guard:', e);
+          }
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

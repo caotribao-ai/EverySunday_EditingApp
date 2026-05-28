@@ -1,0 +1,9 @@
+{
+  "name": "11Cut Studio",
+  "description": "Minimalist AI-powered short-form video editor for professional creators.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": []
+}

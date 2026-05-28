@@ -1,0 +1,253 @@
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@300;400;500;600;700;800&family=Be+Vietnam+Pro:wght@400;600;700;800&family=Montserrat:wght@300;400;500;600;700;800;900&family=Nunito:wght@400;600;700&family=Pacifico&display=swap');
+@import "tailwindcss";
+
+@font-face {
+  font-family: "SF Pro Display";
+  src: url("/fonts/sf-pro-display/SF Pro Display/SF-Pro-Display/SF-Pro-Display-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "SF Pro Display";
+  src: url("/fonts/sf-pro-display/SF Pro Display/SF-Pro-Display/SF-Pro-Display-Medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "SF Pro Display";
+  src: url("/fonts/sf-pro-display/SF Pro Display/SF-Pro-Display/SF-Pro-Display-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-anton: "Anton", sans-serif;
+  --font-montserrat: "Montserrat", sans-serif;
+  --color-brand-primary: #000000;
+  --color-brand-accent: #0066FF;
+}
+
+/* Base styles */
+body {
+  background-color: #F8F9FA;
+  color: #111111;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #E5E7EB;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #D1D5DB;
+}
+
+/* Hide scrollbar for tool tabs */
+.scrollbar-hide::-webkit-scrollbar { 
+  display: none; 
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #E2E8F0;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #CBD5E1;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+  animation: fade-in 0.4s ease-out forwards;
+}
+
+/* Animations */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(0.98); }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s infinite ease-in-out;
+}
+
+/* IMAN - Fade In */
+.caption-iman {
+  font-family: 'Montserrat', 'Be Vietnam Pro', sans-serif;
+  font-weight: 800;
+  font-size: 30px;
+  color: #ffffff;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.8); /* Small shadow */
+  animation: fadeIn 0.4s ease-in-out;
+  line-height: 1.2;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* IMAN 2 - Thin Top, Bold Bottom */
+.caption-iman2 {
+  font-family: 'Montserrat', sans-serif;
+  color: #ffffff;
+  text-align: center;
+  line-height: 1;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 0px !important;
+}
+
+.caption-iman2-top {
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  text-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.caption-iman2-bottom {
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  text-transform: lowercase;
+  text-shadow: 0 6px 15px rgba(0,0,0,0.4);
+}
+
+/* BOB - AlmondMilky style */
+.caption-bob {
+  font-family: 'Pacifico', 'Dancing Script', cursive; /* Fallback for AlmondMilky */
+  font-weight: 500;
+  font-size: 51px;
+  color: #ffffff;
+  -webkit-text-stroke: 3px #FF0000;
+  text-shadow: 2px 2px 0 #FF0000, -2px -2px 0 #FF0000, 2px -2px 0 #FF0000, -2px 2px 0 #FF0000, 0 4px 10px rgba(0,0,0,0.5); /* Thicker red outline effect */
+  animation: letterSpacingBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  line-height: 1.2;
+}
+
+/* HORMOZI - All Caps, Montserrat Black, Bold, Stroke */
+.caption-hormozi {
+  font-family: 'Montserrat', sans-serif;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  text-align: center;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.caption-hormozi-word {
+  display: inline-block;
+  color: #FFFFFF;
+  -webkit-text-stroke: 1px #000000;
+  paint-order: stroke fill;
+  text-shadow: 
+    2px 2px 0px #000000,
+    -1px -1px 0px #000000,
+    1px -1px 0px #000000,
+    -1px 1px 0px #000000,
+    1px 1px 0px #000000;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+}
+
+.caption-hormozi-thin {
+  font-weight: 300;
+}
+
+.caption-hormozi-bold {
+  font-weight: 800;
+}
+
+.caption-hormozi-highlight {
+  /* color: #FFD93D !important; keep it white as per user's "như mẫu hình 2" where the text is white */
+}
+
+.caption-hormozi-pop {
+  animation: hormoziPop 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* ALEX - Bold white word by word */
+.caption-alex {
+  font-family: 'Montserrat', sans-serif;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  text-align: center;
+  display: flex !important;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.caption-alex-word {
+  display: inline-block;
+  color: #FFFFFF;
+  font-weight: 900;
+  text-transform: uppercase;
+  text-shadow: 
+    -3px -3px 0 #000,
+     0   -3px 0 #000,
+     3px -3px 0 #000,
+     3px  0   0 #000,
+     3px  3px 0 #000,
+     0    3px 0 #000,
+    -3px  3px 0 #000,
+    -3px  0   0 #000,
+     0px  8px 0px rgba(0,0,0,0.6);
+}
+
+.caption-alex-pop {
+  animation: alexPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes alexPop {
+  0% { transform: scale(0.5) rotate(-5deg); opacity: 0; }
+  100% { transform: scale(1.1) rotate(-2deg); opacity: 1; }
+}
+
+@keyframes hormoziPop {
+  0% { transform: scale(0.7) translateY(20px); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes wordPop {
+  0% { transform: scale(0.8) translateY(10px); opacity: 0; }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes letterSpacingBounce {
+  0% { letter-spacing: 12px; opacity: 0; }
+  50% { letter-spacing: -2px; opacity: 0.8; }
+  100% { letter-spacing: normal; opacity: 1; }
+}
