@@ -251,3 +251,118 @@ body {
   50% { letter-spacing: -2px; opacity: 0.8; }
   100% { letter-spacing: normal; opacity: 1; }
 }
+
+/* Editor-only dark chrome (Dashboard stays light) */
+.editor-dark {
+  --ed-bg: #0c0c0f;
+  --ed-surface: #141417;
+  --ed-surface-2: #1c1c21;
+  --ed-surface-3: #27272a;
+  --ed-border: #2e2e35;
+  --ed-text: #f4f4f5;
+  --ed-muted: #a1a1aa;
+  --ed-muted-2: #71717a;
+  background-color: var(--ed-bg);
+  color: var(--ed-text);
+}
+
+.editor-dark .bg-white {
+  background-color: var(--ed-surface) !important;
+}
+
+.editor-dark .bg-zinc-50 {
+  background-color: var(--ed-surface-2) !important;
+}
+
+.editor-dark .bg-zinc-100 {
+  background-color: var(--ed-surface-3) !important;
+}
+
+.editor-dark .bg-zinc-200 {
+  background-color: #3f3f46 !important;
+}
+
+.editor-dark .border-zinc-50,
+.editor-dark .border-zinc-100,
+.editor-dark .border-zinc-200,
+.editor-dark .border-dashed.border-zinc-200 {
+  border-color: var(--ed-border) !important;
+}
+
+.editor-dark .text-zinc-900,
+.editor-dark .text-zinc-800 {
+  color: var(--ed-text) !important;
+}
+
+.editor-dark .text-zinc-700,
+.editor-dark .text-zinc-600 {
+  color: #d4d4d8 !important;
+}
+
+.editor-dark .text-zinc-500,
+.editor-dark .text-zinc-400 {
+  color: var(--ed-muted) !important;
+}
+
+.editor-dark .hover\:bg-zinc-50:hover {
+  background-color: var(--ed-surface-2) !important;
+}
+
+.editor-dark .hover\:bg-zinc-100:hover {
+  background-color: var(--ed-surface-3) !important;
+}
+
+.editor-dark .hover\:border-zinc-300:hover {
+  border-color: #52525b !important;
+}
+
+.editor-dark .hover\:text-zinc-900:hover,
+.editor-dark .hover\:text-black:hover {
+  color: var(--ed-text) !important;
+}
+
+.editor-dark .bg-green-50 {
+  background-color: rgba(34, 197, 94, 0.12) !important;
+}
+
+.editor-dark .text-green-700 {
+  color: #4ade80 !important;
+}
+
+.editor-dark .border-green-100 {
+  border-color: rgba(34, 197, 94, 0.28) !important;
+}
+
+.editor-dark .bg-orange-50 {
+  background-color: rgba(249, 115, 22, 0.12) !important;
+}
+
+.editor-dark .border-orange-200,
+.editor-dark .border-orange-300 {
+  border-color: rgba(249, 115, 22, 0.35) !important;
+}
+
+.editor-dark .text-orange-700,
+.editor-dark .text-orange-600 {
+  color: #fb923c !important;
+}
+
+.editor-dark input:not([type="range"]),
+.editor-dark select,
+.editor-dark textarea {
+  background-color: var(--ed-surface-2) !important;
+  border-color: var(--ed-border) !important;
+  color: var(--ed-text) !important;
+}
+
+.editor-dark input::placeholder {
+  color: var(--ed-muted-2);
+}
+
+.editor-dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+}
+
+.editor-dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}

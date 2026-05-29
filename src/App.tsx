@@ -3849,7 +3849,7 @@ export default function App() {
               key="editor"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex flex-col h-full bg-[#f8f9fb] overflow-hidden"
+              className="editor-dark flex flex-col h-full overflow-hidden"
             >
               {/* TOP BAR */}
               <header className="h-16 px-6 bg-white border-b border-zinc-100 flex items-center justify-between z-30 shrink-0">
